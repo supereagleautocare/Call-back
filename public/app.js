@@ -14,7 +14,7 @@ const api = async (path, opts) => {
 
 // --- date helpers (real "today") -------------------------------------------
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const money = (n) => "$" + Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 0 });
+const money = (n) => "$" + Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const d0 = (v) => { const d = new Date(v); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const shift = (base, days) => { const d = new Date(base); d.setDate(d.getDate() + days); return iso(d); };
