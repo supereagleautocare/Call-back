@@ -276,6 +276,11 @@ async function loadSyncStatusText() {
   const s = await api("/api/sync-status");
   const el = $("sync-status-text");
   if (!el) return;
+  // Show an error only if the last run failed and we've never had a good sync.
+  if (s?.last_error && !s?.last_synced_at) {
+    el.innerHTML = `<span style="color:var(--declined)">Last pull failed: ${escapeHtml(s.last_error)}</span>`;
+    return;
+  }
   if (s?.last_synced_at) {
     const when = new Date(s.last_synced_at).toLocaleString(undefined, { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
     el.textContent = `Last pulled ${when} · ${s.last_count ?? 0} repair orders. Nightly auto-pull is on.`;

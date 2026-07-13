@@ -87,7 +87,8 @@ export function apiRouter() {
 
   // Last sync info for the header line
   r.get("/sync-status", async (_req, res) => {
-    const s = await query("SELECT last_synced_at, last_count FROM sync_state WHERE id = 1");
+    const s = await query(
+      "SELECT last_synced_at, last_count, last_run_at, last_error FROM sync_state WHERE id = 1");
     res.json(s.rows[0] || {});
   });
 
