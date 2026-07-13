@@ -65,18 +65,23 @@ export async function runSync({ full = false, force = false, windowDays = WINDOW
     resetRequestBudget(); // refill the per-run request ceiling
     const useIncremental = !full && lastSynced;
 
+    // Tekmetric wants full ISO-8601 timestamps with an offset (ZonedDateTime),
+    // e.g. 2026-06-13T00:00:00Z — not a bare date.
+    const isoZ = (d) => d.toISOString().replace(/\.\d{3}Z$/, "Z");
+
     // Build the date filter: incremental (updated-since) or full (posted window).
     const filters = { shopId: SHOP_ID, statuses: STATUSES };
     if (useIncremental) {
       // Re-check a day before last sync to catch anything that landed late.
       const since = new Date(lastSynced);
       since.setDate(since.getDate() - 1);
-      filters.updatedStart = since.toISOString().slice(0, 10);
+      filters.updatedStart = isoZ(since);
     } else {
       const start = new Date();
       start.setDate(start.getDate() - windowDays);
-      filters.postedStart = start.toISOString().slice(0, 10);
-      filters.postedEnd = new Date().toISOString().slice(0, 10);
+      start.setHours(0, 0, 0, 0);
+      filters.postedStart = isoZ(start);
+      filters.postedEnd = isoZ(new Date());
     }
 
     await getAccessToken();

@@ -87,13 +87,15 @@ async function apiGet(path, { retries = 6 } = {}) {
   }
 }
 
-// Walk every page of a paginated list endpoint and return all rows.
+// Walk every page of a list endpoint and return all rows.
+// Handles both shapes Tekmetric uses: paginated { content, last } and plain arrays.
 async function getAllPages(basePath) {
   const out = [];
   let page = 0;
   for (;;) {
     const sep = basePath.includes("?") ? "&" : "?";
     const body = await apiGet(`${basePath}${sep}size=100&page=${page}`);
+    if (Array.isArray(body)) { out.push(...body); break; } // non-paginated endpoint
     const content = body.content || [];
     out.push(...content);
     if (body.last || content.length === 0) break;
