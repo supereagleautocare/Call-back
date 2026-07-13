@@ -1,6 +1,6 @@
 # Callback Tracker
 
-Internal tool for Precision Auto & Tire. Pulls **closed repair orders** from Tekmetric
+Internal tool for Super Eagle Auto Care. Pulls **closed repair orders** from Tekmetric
 each night and turns the **declined work** into a callback list your advisors work through.
 Notes, completions, and follow-ups live in this app — nothing is written back to Tekmetric.
 
