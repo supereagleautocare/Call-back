@@ -76,7 +76,8 @@ const advVal = () => $("f-advisor").value;
   }
 
   loadSyncLine();
-  applyRangePreset("this-month");     // default main range
+  const [rf, rt] = rangeFor("this-month");   // default main range
+  $("f-from").value = rf; $("f-to").value = rt; $("f-range").value = "this-month";
   if (me.isManager) setSbRange(...rangeFor("last-week")); // default scoreboard range
   wireEvents();
   refresh();
