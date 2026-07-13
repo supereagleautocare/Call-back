@@ -6,6 +6,7 @@ import { Router } from "express";
 import { query } from "./db/index.js";
 import { requireManager, requireOwner } from "./auth.js";
 import { roDeepLink } from "./tekmetric.js";
+import { runSync } from "./jobs/sync.js";
 
 const SHOP_ID = Number(process.env.TEKMETRIC_SHOP_ID);
 const centsToDollars = (c) => Math.round(Number(c || 0)) / 100;
@@ -190,6 +191,18 @@ export function apiRouter() {
     for (const x of done.rows) row(x.advisor_name || "Unassigned").completed++;
 
     res.json([...board.values()].map((b) => ({ ...b, declinedOpen: centsToDollars(b.declinedOpen) })));
+  });
+
+  // --- Owner: trigger a Tekmetric pull ------------------------------------
+  let syncing = false;
+  r.get("/admin/sync", requireOwner, (_req, res) => res.json({ running: syncing }));
+  r.post("/admin/sync", requireOwner, (req, res) => {
+    if (syncing) return res.json({ started: false, running: true });
+    syncing = true;
+    runSync({ full: !!req.body.full, force: true })
+      .catch((e) => console.error("Manual sync error:", e))
+      .finally(() => { syncing = false; });
+    res.json({ started: true });
   });
 
   // --- Owner: Team & Access admin -----------------------------------------

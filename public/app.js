@@ -270,6 +270,39 @@ async function renderScoreboard() {
 }
 
 // ============================================================================
+// Owner: pull data from Tekmetric
+// ============================================================================
+async function loadSyncStatusText() {
+  const s = await api("/api/sync-status");
+  const el = $("sync-status-text");
+  if (!el) return;
+  if (s?.last_synced_at) {
+    const when = new Date(s.last_synced_at).toLocaleString(undefined, { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
+    el.textContent = `Last pulled ${when} · ${s.last_count ?? 0} repair orders. Nightly auto-pull is on.`;
+  } else {
+    el.textContent = "No data yet — click Pull now to load the last 30 days of closed ROs.";
+  }
+}
+async function startPull() {
+  const btn = $("sync-now");
+  btn.disabled = true; btn.textContent = "Pulling…";
+  $("sync-status-text").textContent = "Pulling from Tekmetric — this can take a minute…";
+  const first = await api("/api/sync-status");
+  await api("/api/admin/sync", { method: "POST", body: JSON.stringify({ full: !first?.last_synced_at }) });
+  // poll until the run finishes
+  const timer = setInterval(async () => {
+    const st = await api("/api/admin/sync");
+    if (!st.running) {
+      clearInterval(timer);
+      btn.disabled = false; btn.textContent = "Pull now";
+      await loadSyncStatusText();
+      loadSyncLine();
+      refresh();
+    }
+  }, 3000);
+}
+
+// ============================================================================
 // Admin: Team & Access
 // ============================================================================
 async function renderAdmin() {
@@ -368,7 +401,8 @@ function wireEvents() {
 
   // admin modal
   const overlay = $("adminOverlay");
-  $("adminBtn").onclick = () => { renderAdmin(); overlay.classList.remove("hidden"); };
+  $("adminBtn").onclick = () => { renderAdmin(); loadSyncStatusText(); overlay.classList.remove("hidden"); };
+  $("sync-now").onclick = startPull;
   $("adminClose").onclick = () => overlay.classList.add("hidden");
   $("adminDone").onclick = () => overlay.classList.add("hidden");
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.add("hidden"); });
