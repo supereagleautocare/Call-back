@@ -69,11 +69,7 @@ const advVal = () => $("f-advisor").value;
   if (me.domain) $("admin-domain").textContent = "@" + me.domain;
 
   // advisor dropdown
-  const advisors = await api("/api/advisors");
-  for (const a of advisors) {
-    const o = document.createElement("option"); o.value = a; o.textContent = a;
-    $("f-advisor").appendChild(o);
-  }
+  await loadAdvisors();
 
   loadSyncLine();
   const [rf, rt] = rangeFor("this-month");   // default main range
@@ -82,6 +78,18 @@ const advVal = () => $("f-advisor").value;
   wireEvents();
   refresh();
 })();
+
+async function loadAdvisors() {
+  const advisors = await api("/api/advisors");
+  const sel = $("f-advisor");
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All</option>';
+  for (const a of advisors) {
+    const o = document.createElement("option"); o.value = a; o.textContent = a;
+    sel.appendChild(o);
+  }
+  sel.value = current; // keep any active selection
+}
 
 async function loadSyncLine() {
   try {
@@ -303,6 +311,7 @@ async function startPull() {
       btn.disabled = false; btn.textContent = "Pull now";
       await loadSyncStatusText();
       loadSyncLine();
+      loadAdvisors();
       refresh();
     }
   }, 3000);
