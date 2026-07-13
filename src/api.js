@@ -47,16 +47,20 @@ export function apiRouter() {
   r.get("/me", (req, res) =>
     res.json({ ...req.session.user, domain: process.env.ALLOWED_DOMAIN || "" }));
 
-  // Tiles + tab counts. Reflects all open work (optionally advisor-filtered),
-  // independent of the current tab/date filter — matches the dashboard design.
+  // Tiles + tab counts for the selected date range (+ optional advisor).
+  // Open work is scoped by posted date; the Completed count by completion date.
   r.get("/summary", async (req, res) => {
-    const { advisor } = req.query;
+    const { advisor, from, to } = req.query;
     const params = [];
-    let advClause = "";
-    if (advisor) { params.push(advisor); advClause = ` AND ro.advisor_name = $${params.length}`; }
+    let adv = "";
+    if (advisor) { params.push(advisor); adv = ` AND ro.advisor_name = $${params.length}`; }
+    // date clause for open work (posted date)
+    let postedRange = "";
+    if (from) { params.push(from); postedRange += ` AND ro.posted_date >= $${params.length}`; }
+    if (to) { params.push(to); postedRange += ` AND ro.posted_date <= ($${params.length}::date + 1)`; }
 
     const open = await query(
-      `${SELECT_JOIN} WHERE ci.completed = false${advClause}`, params);
+      `${SELECT_JOIN} WHERE ci.completed = false${adv}${postedRange}`, params);
 
     const today = new Date();
     const age = (d) => Math.floor((today - new Date(d)) / 86400000);
@@ -68,13 +72,19 @@ export function apiRouter() {
       if (eff && age(eff) >= 3) overdue++;
     }
 
+    // Tab counts: active/followups by posted date, completed by completion date.
+    const cp = [];
+    let cadv = "", cActiveRange = "", cDoneRange = "";
+    if (advisor) { cp.push(advisor); cadv = ` AND ro.advisor_name = $${cp.length}`; }
+    if (from) { cp.push(from); cActiveRange += ` AND ro.posted_date >= $${cp.length}`; cDoneRange += ` AND ci.completed_at >= $${cp.length}`; }
+    if (to) { cp.push(to); cActiveRange += ` AND ro.posted_date <= ($${cp.length}::date + 1)`; cDoneRange += ` AND ci.completed_at <= ($${cp.length}::date + 1)`; }
     const counts = await query(
       `SELECT
-         COUNT(*) FILTER (WHERE completed = false AND kind = 'initial')  AS active,
-         COUNT(*) FILTER (WHERE completed = false AND kind = 'followup') AS followups,
-         COUNT(*) FILTER (WHERE completed = true)                        AS completed
+         COUNT(*) FILTER (WHERE completed = false AND kind = 'initial'${cActiveRange})  AS active,
+         COUNT(*) FILTER (WHERE completed = false AND kind = 'followup'${cActiveRange}) AS followups,
+         COUNT(*) FILTER (WHERE completed = true${cDoneRange})                          AS completed
        FROM callback_items ci JOIN repair_orders ro ON ro.tek_id = ci.ro_tek_id
-       WHERE true${advClause}`, params);
+       WHERE true${cadv}`, cp);
 
     res.json({
       open: open.rows.length,
@@ -165,12 +175,19 @@ export function apiRouter() {
 
   // --- Manager: scoreboard (per-advisor, own date range) ------------------
   r.get("/scoreboard", requireManager, async (req, res) => {
-    const { from, to } = req.query;
-    // Live open/overdue snapshot
-    const open = await query(`${SELECT_JOIN} WHERE ci.completed = false`);
-    // Completions within the chosen range
+    const { from, to, advisor } = req.query;
+    // Open/overdue for ROs posted in range
+    const op = [];
+    let openWhere = "ci.completed = false";
+    if (advisor) { op.push(advisor); openWhere += ` AND ro.advisor_name = $${op.length}`; }
+    if (from) { op.push(from); openWhere += ` AND ro.posted_date >= $${op.length}`; }
+    if (to) { op.push(to); openWhere += ` AND ro.posted_date <= ($${op.length}::date + 1)`; }
+    const open = await query(`${SELECT_JOIN} WHERE ${openWhere}`, op);
+
+    // Completions within the chosen range (by completion date)
     const doneParams = [];
     let doneWhere = "ci.completed = true";
+    if (advisor) { doneParams.push(advisor); doneWhere += ` AND ro.advisor_name = $${doneParams.length}`; }
     if (from) { doneParams.push(from); doneWhere += ` AND ci.completed_at >= $${doneParams.length}`; }
     if (to) { doneParams.push(to); doneWhere += ` AND ci.completed_at <= ($${doneParams.length}::date + 1)`; }
     const done = await query(`${SELECT_JOIN} WHERE ${doneWhere}`, doneParams);

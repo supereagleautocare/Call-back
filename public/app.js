@@ -72,9 +72,8 @@ const advVal = () => $("f-advisor").value;
   await loadAdvisors();
 
   loadSyncLine();
-  const [rf, rt] = rangeFor("this-month");   // default main range
+  const [rf, rt] = rangeFor("this-month");   // one date range drives everything
   $("f-from").value = rf; $("f-to").value = rt; $("f-range").value = "this-month";
-  if (me.isManager) setSbRange(...rangeFor("last-week")); // default scoreboard range
   wireEvents();
   refresh();
 })();
@@ -112,9 +111,15 @@ async function refresh() {
   if (adv) params.set("advisor", adv);
   if (q) params.set("q", q);
 
+  // summary + scoreboard share the same range/advisor, just not the tab or search
+  const sp = new URLSearchParams();
+  if (from) sp.set("from", from);
+  if (to) sp.set("to", to);
+  if (adv) sp.set("advisor", adv);
+
   const [rows, summary] = await Promise.all([
     api("/api/callbacks?" + params.toString()),
-    api("/api/summary" + (adv ? "?advisor=" + encodeURIComponent(adv) : "")),
+    api("/api/summary?" + sp.toString()),
   ]);
   renderTable(rows || []);
   renderSummary(summary);
@@ -212,7 +217,7 @@ function renderTable(rows) {
 function renderSummary(s) {
   if (!s) return;
   $("t-open").textContent = s.open;
-  $("t-open-meta").textContent = advVal() || "across all advisors";
+  $("t-open-meta").textContent = advVal() || "in this date range";
   $("t-appr").textContent = money(s.approved);
   $("t-decl").textContent = money(s.declined);
   $("t-over").textContent = s.overdue;
@@ -252,15 +257,18 @@ async function completeNow(followUpDate) {
 }
 
 // ============================================================================
-// Manager scoreboard (its own date range)
+// Manager scoreboard (follows the single date range at the top)
 // ============================================================================
-let sbFrom = "", sbTo = "";
-function setSbRange(from, to) { sbFrom = from; sbTo = to; $("sb-from").value = from; $("sb-to").value = to; renderScoreboard(); }
 async function renderScoreboard() {
-  const rows = await api(`/api/scoreboard?from=${sbFrom}&to=${sbTo}`);
+  const from = $("f-from").value, to = $("f-to").value, adv = $("f-advisor").value;
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  if (adv) params.set("advisor", adv);
+  const rows = await api("/api/scoreboard?" + params.toString());
   const noteFmt = (v) => fmtDate(v).replace(/<[^>]+>/g, "");
   $("sb-note").innerHTML =
-    `<b>Open / Overdue</b> = live workload right now &nbsp;·&nbsp; <b>Completed</b> = worked between <b>${noteFmt(sbFrom)} – ${noteFmt(sbTo)}</b>`;
+    `Open, overdue, completed &amp; declined-$ per advisor for <b>${noteFmt(from)} – ${noteFmt(to)}</b>.`;
   const tb = $("sb-rows");
   tb.innerHTML = "";
   for (const b of (rows || [])) {
@@ -403,16 +411,6 @@ function wireEvents() {
   $("fuNo").onclick = () => completeNow(null);
   document.querySelectorAll("#fuPop .when-btn").forEach((b) => b.onclick = () => completeNow(shift(TODAY, +b.dataset.days)));
   $("fuDateGo").onclick = () => { const d = $("fuDate").value; if (d) completeNow(d); };
-
-  // scoreboard range
-  document.querySelectorAll("#sb-presets .chip").forEach((c) => c.onclick = () => {
-    document.querySelectorAll("#sb-presets .chip").forEach((x) => x.classList.remove("active"));
-    c.classList.add("active"); const [f,t] = rangeFor(c.dataset.range); setSbRange(f, t);
-  });
-  ["sb-from","sb-to"].forEach((id) => $(id).addEventListener("change", () => {
-    document.querySelectorAll("#sb-presets .chip").forEach((x) => x.classList.remove("active"));
-    sbFrom = $("sb-from").value; sbTo = $("sb-to").value; renderScoreboard();
-  }));
 
   // admin modal
   const overlay = $("adminOverlay");

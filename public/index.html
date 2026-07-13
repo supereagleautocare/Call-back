@@ -107,6 +107,8 @@
   .icon-btn:hover { color: var(--ink); border-color: var(--line-strong); }
 
   .wrap { max-width: 1240px; margin: 0 auto; padding: 20px; }
+  .filterbar { position: sticky; top: 59px; z-index: 15; }
+  .filter-lead { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-3); font-weight: 700; }
 
   /* ---- Summary tiles ---- */
   .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
@@ -380,11 +382,36 @@
 </header>
 
 <div class="wrap">
+  <div class="toolbar filterbar">
+    <span class="filter-lead">Showing</span>
+    <div class="field">
+      <label>Range</label>
+      <select id="f-range">
+        <option value="custom">Custom</option>
+        <option value="today">Today</option>
+        <option value="yesterday">Yesterday</option>
+        <option value="last7">Last 7 days</option>
+        <option value="this-week">This week</option>
+        <option value="last-week">Last week</option>
+        <option value="this-month" selected>This month</option>
+        <option value="last-month">Last month</option>
+      </select>
+    </div>
+    <div class="field"><label>From</label><input type="date" id="f-from"></div>
+    <div class="field"><label>To</label><input type="date" id="f-to"></div>
+    <div class="field">
+      <label>Advisor</label>
+      <select id="f-advisor"><option value="">All</option></select>
+    </div>
+    <div class="spacer" style="flex:1"></div>
+    <input type="search" id="f-search" placeholder="Search customer or RO#…">
+  </div>
+
   <section class="tiles">
     <div class="tile">
       <div class="lbl">Open Callbacks</div>
       <div class="val tnum" id="t-open">0</div>
-      <div class="meta" id="t-open-meta">across all advisors</div>
+      <div class="meta" id="t-open-meta">in this date range</div>
     </div>
     <div class="tile approved">
       <div class="lbl">Approved &amp; Done</div>
@@ -407,14 +434,6 @@
     <div class="sb-head">
       <span class="tag">Manager</span>
       <span class="ttl">Advisor scoreboard</span>
-      <span style="flex:1"></span>
-      <div class="sb-presets" id="sb-presets">
-        <button class="chip" data-range="this-week">This week</button>
-        <button class="chip active" data-range="last-week">Last week</button>
-        <button class="chip" data-range="this-month">This month</button>
-      </div>
-      <div class="field"><label>From</label><input type="date" id="sb-from"></div>
-      <div class="field"><label>To</label><input type="date" id="sb-to"></div>
     </div>
     <div class="sb-note" id="sb-note"></div>
     <table class="sb-table">
@@ -438,33 +457,6 @@
       <button class="tab" data-view="followups">Follow-ups <span class="count" id="c-followups">0</span></button>
       <button class="tab" data-view="completed">Completed <span class="count" id="c-completed">0</span></button>
     </div>
-    <div class="spacer" style="flex:1"></div>
-    <div class="field">
-      <label>Advisor</label>
-      <select id="f-advisor"><option value="">All</option></select>
-    </div>
-    <div class="field">
-      <label>Range</label>
-      <select id="f-range">
-        <option value="custom">Custom</option>
-        <option value="today">Today</option>
-        <option value="yesterday">Yesterday</option>
-        <option value="last7">Last 7 days</option>
-        <option value="this-week">This week</option>
-        <option value="last-week">Last week</option>
-        <option value="this-month" selected>This month</option>
-        <option value="last-month">Last month</option>
-      </select>
-    </div>
-    <div class="field">
-      <label>From</label>
-      <input type="date" id="f-from" value="2026-07-01">
-    </div>
-    <div class="field">
-      <label>To</label>
-      <input type="date" id="f-to" value="2026-07-13">
-    </div>
-    <input type="search" id="f-search" placeholder="Search customer or RO#…">
   </div>
 
   <div class="table-wrap">
