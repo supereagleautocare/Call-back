@@ -44,10 +44,17 @@ export async function setupAuth(app) {
   const devMode = !process.env.GOOGLE_CLIENT_ID;
 
   if (devMode) {
-    console.log("⚠ AUTH DEV MODE: no GOOGLE_CLIENT_ID set — using a local test login.");
+    console.log("⚠ AUTH DEV MODE: no GOOGLE_CLIENT_ID set — everyone is auto-signed-in as owner. Add Google before sharing the URL!");
     app.get("/auth/login", async (req, res) => {
-      const email = OWNER_EMAIL || `dev@${ALLOWED_DOMAIN || "example.com"}`;
-      req.session.user = await resolveUser(email, "Dev User");
+      // Dev login always succeeds as an owner, so there's never a redirect loop.
+      const email = (OWNER_EMAIL || `owner@${ALLOWED_DOMAIN || "example.com"}`).toLowerCase();
+      await query(
+        `INSERT INTO app_users (email, display_name, is_manager, last_seen)
+         VALUES ($1, $2, true, now())
+         ON CONFLICT (email) DO UPDATE SET last_seen = now()`,
+        [email, "Owner (dev)"]
+      );
+      req.session.user = { email, name: "Owner (dev)", isManager: true, isOwner: true };
       res.redirect("/");
     });
   } else {
