@@ -1,0 +1,23 @@
+{
+  "name": "callback-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tekmetric callback tracker for Precision Auto & Tire",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate": "node src/db/migrate.js",
+    "sync": "node src/jobs/runSync.js"
+  },
+  "dependencies": {
+    "connect-pg-simple": "^9.0.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "node-cron": "^3.0.3",
+    "openid-client": "^5.6.5",
+    "pg": "^8.12.0"
+  }
+}

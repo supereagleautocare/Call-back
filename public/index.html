@@ -1,0 +1,554 @@
+<title>Callback Tracker</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    /* Neutrals — slate-biased, chosen not defaulted */
+    --bg:        #eef1f5;
+    --surface:   #ffffff;
+    --surface-2: #f6f8fb;
+    --line:      #dde3ec;
+    --line-strong:#c7d0dd;
+    --ink:       #1b2430;
+    --ink-2:     #5c6675;
+    --ink-3:     #8a93a3;
+    /* Brand — industrial petrol blue */
+    --brand:     #1f6f8b;
+    --brand-ink: #16556b;
+    --brand-wash:#e3f0f4;
+    /* Semantic money */
+    --approved:  #1f7a43;
+    --approved-wash:#e4f2e9;
+    --declined:  #b23a2f;
+    --declined-wash:#f7e6e3;
+    --amber:     #c47f17;
+    --amber-wash:#fbf1dd;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(21,33,48,.06), 0 4px 16px rgba(21,33,48,.05);
+    --font: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:        #10151c;
+      --surface:   #171e27;
+      --surface-2: #1d2631;
+      --line:      #29333f;
+      --line-strong:#374453;
+      --ink:       #e7ecf3;
+      --ink-2:     #a3adbc;
+      --ink-3:     #6f7a8a;
+      --brand:     #4bb3d4;
+      --brand-ink: #7fcfe6;
+      --brand-wash:#132e38;
+      --approved:  #4cc27d;
+      --approved-wash:#12281c;
+      --declined:  #e0776c;
+      --declined-wash:#2c1815;
+      --amber:     #e0ab55;
+      --amber-wash:#2a2110;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:#eef1f5; --surface:#fff; --surface-2:#f6f8fb; --line:#dde3ec; --line-strong:#c7d0dd;
+    --ink:#1b2430; --ink-2:#5c6675; --ink-3:#8a93a3;
+    --brand:#1f6f8b; --brand-ink:#16556b; --brand-wash:#e3f0f4;
+    --approved:#1f7a43; --approved-wash:#e4f2e9; --declined:#b23a2f; --declined-wash:#f7e6e3;
+    --amber:#c47f17; --amber-wash:#fbf1dd;
+    --shadow:0 1px 2px rgba(21,33,48,.06),0 4px 16px rgba(21,33,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --bg:#10151c; --surface:#171e27; --surface-2:#1d2631; --line:#29333f; --line-strong:#374453;
+    --ink:#e7ecf3; --ink-2:#a3adbc; --ink-3:#6f7a8a;
+    --brand:#4bb3d4; --brand-ink:#7fcfe6; --brand-wash:#132e38;
+    --approved:#4cc27d; --approved-wash:#12281c; --declined:#e0776c; --declined-wash:#2c1815;
+    --amber:#e0ab55; --amber-wash:#2a2110;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font); font-size: 14px; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* ---- Top bar ---- */
+  header.topbar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 20px; background: var(--surface);
+    border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo .mark {
+    width: 30px; height: 30px; border-radius: 8px; flex: none;
+    background: var(--brand); color: #fff; display: grid; place-items: center;
+    font-weight: 700; font-size: 15px; letter-spacing: -.5px;
+  }
+  .logo h1 { font-size: 15px; margin: 0; font-weight: 650; letter-spacing: -.2px; }
+  .logo .sub { font-size: 11px; color: var(--ink-3); margin-top: 1px; }
+  .spacer { flex: 1; }
+  .userchip {
+    display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2);
+    font-size: 12.5px; color: var(--ink-2); font-family: inherit; cursor: pointer;
+  }
+  .userchip:hover { border-color: var(--line-strong); }
+  .userchip .av {
+    width: 26px; height: 26px; border-radius: 999px; flex: none;
+    background: var(--amber); color: #fff; display: grid; place-items: center;
+    font-weight: 650; font-size: 11px;
+  }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--surface-2); color: var(--ink-2); cursor: pointer; font-size: 15px;
+    display: grid; place-items: center;
+  }
+  .icon-btn:hover { color: var(--ink); border-color: var(--line-strong); }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 20px; }
+
+  /* ---- Summary tiles ---- */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  .tile {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px 16px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+  }
+  .tile::before {
+    content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background: var(--brand);
+  }
+  .tile.approved::before { background: var(--approved); }
+  .tile.declined::before { background: var(--declined); }
+  .tile.overdue::before { background: var(--declined); }
+  .tile .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-3); font-weight: 600; }
+  .tile .val { font-size: 25px; font-weight: 700; margin-top: 6px; letter-spacing: -.5px; }
+  .tile.approved .val { color: var(--approved); }
+  .tile.declined .val { color: var(--declined); }
+  .tile.overdue .val { color: var(--declined); }
+  .tile .meta { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+
+  /* ---- Manager scoreboard ---- */
+  .scoreboard {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); margin-bottom: 14px; overflow: hidden;
+  }
+  .scoreboard.hidden { display: none; }
+  .sb-head {
+    display: flex; align-items: center; gap: 10px; padding: 11px 16px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--line); background: var(--surface-2);
+  }
+  .sb-head .ttl { font-weight: 650; font-size: 13.5px; }
+  .sb-head .tag { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--brand-ink); background: var(--brand-wash); padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+  .sb-head .field label { font-size: 10.5px; }
+  .sb-head input[type="date"] { padding: 5px 7px; font-size: 12.5px; }
+  .sb-presets { display: inline-flex; gap: 4px; }
+  .chip {
+    font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-2);
+    border-radius: 999px; padding: 4px 11px;
+  }
+  .chip:hover { color: var(--ink); border-color: var(--brand); }
+  .chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .sb-note { padding: 8px 16px; font-size: 12px; color: var(--ink-3); border-bottom: 1px solid var(--line); background: var(--surface); }
+  .sb-table { width: 100%; border-collapse: collapse; }
+  .sb-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-3); font-weight: 600; padding: 9px 16px; }
+  .sb-table th.num, .sb-table td.num { text-align: right; }
+  .sb-table td { padding: 9px 16px; border-top: 1px solid var(--line); font-size: 13.5px; }
+  .sb-table .adv-name { font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+  .sb-table .dot { width: 8px; height: 8px; border-radius: 999px; flex: none; }
+  .bar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; min-width: 60px; }
+  .bar > span { display: block; height: 100%; background: var(--approved); }
+  .flag { color: var(--declined); font-weight: 650; }
+  .flag.ok { color: var(--ink-3); font-weight: 500; }
+
+  /* ---- Toolbar ---- */
+  .toolbar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 10px 12px; margin-bottom: 14px; box-shadow: var(--shadow);
+  }
+  .tabs { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .tab {
+    border: 0; background: transparent; color: var(--ink-2); font: inherit; font-weight: 600;
+    padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .tab.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  .tab .count {
+    font-size: 11px; background: var(--brand-wash); color: var(--brand-ink);
+    padding: 1px 7px; border-radius: 999px; font-variant-numeric: tabular-nums;
+  }
+  .tab.active .count { background: var(--brand); color: #fff; }
+
+  .field { display: flex; align-items: center; gap: 6px; }
+  .field label { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+  input, select {
+    font: inherit; font-size: 13px; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--line-strong); border-radius: 7px; padding: 7px 9px;
+  }
+  input:focus, select:focus { outline: 2px solid var(--brand); outline-offset: 0; border-color: var(--brand); }
+  input[type="search"] { min-width: 180px; }
+  .btn {
+    font: inherit; font-weight: 600; font-size: 13px; cursor: pointer;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink);
+    border-radius: 7px; padding: 7px 12px; display: inline-flex; align-items: center; gap: 7px;
+  }
+  .btn:hover { border-color: var(--brand); color: var(--brand-ink); }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn.primary:hover { background: var(--brand-ink); color: #fff; }
+
+  /* ---- Table ---- */
+  .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 940px; }
+  thead th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--ink-3); font-weight: 600; padding: 11px 14px; border-bottom: 1px solid var(--line);
+    background: var(--surface-2); position: sticky; top: 0; white-space: nowrap;
+  }
+  thead th.sortable { cursor: pointer; user-select: none; }
+  thead th.sortable:hover { color: var(--ink); }
+  thead th .arrow { opacity: 0; margin-left: 4px; font-size: 10px; }
+  thead th.sorted { color: var(--brand-ink); }
+  thead th.sorted .arrow { opacity: 1; }
+  th.num, td.num { text-align: right; }
+  tbody td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: var(--surface-2); }
+  .date { color: var(--ink-2); white-space: nowrap; font-size: 13px; }
+  .date .yr { color: var(--ink-3); }
+  .age {
+    display: inline-block; margin-top: 3px; font-size: 10.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .4px; padding: 1px 7px; border-radius: 999px;
+    background: var(--surface-2); color: var(--ink-3); border: 1px solid var(--line);
+  }
+  .age.warn { background: var(--amber-wash); color: var(--amber); border-color: transparent; }
+  .age.over { background: var(--declined-wash); color: var(--declined); border-color: transparent; }
+  tr.overdue td:first-child { box-shadow: inset 3px 0 0 var(--declined); }
+  .advisor { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .advisor .dot { width: 8px; height: 8px; border-radius: 999px; flex: none; }
+  .cust { font-weight: 600; }
+  .ro-link { color: var(--brand); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .ro-link:hover { text-decoration: underline; }
+  .ro-link .ext { font-size: 11px; opacity: .7; }
+  .money { font-weight: 650; white-space: nowrap; }
+  .money.pos { color: var(--approved); }
+  .money.neg { color: var(--declined); }
+  .money.zero { color: var(--ink-3); font-weight: 500; }
+  .notes-input {
+    width: 100%; min-width: 150px; border: 1px solid transparent; background: transparent;
+    border-radius: 6px; padding: 6px 8px; font-family: inherit; font-size: 13px; line-height: 1.45;
+    color: var(--ink); resize: none; overflow: hidden;
+  }
+  .notes-input::placeholder { color: var(--ink-3); }
+  .notes-input:hover { border-color: var(--line); background: var(--surface-2); }
+  .notes-input:focus { border-color: var(--brand); background: var(--surface); outline: none; }
+  td.actions { white-space: nowrap; text-align: right; }
+  .complete-btn {
+    font: inherit; font-weight: 600; font-size: 12.5px; cursor: pointer;
+    border: 1px solid var(--approved); background: var(--approved-wash); color: var(--approved);
+    border-radius: 7px; padding: 6px 11px; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .complete-btn:hover:not(:disabled) { background: var(--approved); color: #fff; }
+  .complete-btn:disabled {
+    border-color: var(--line); background: var(--surface-2); color: var(--ink-3);
+    cursor: not-allowed;
+  }
+  .done-badge {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2);
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px;
+  }
+  .done-badge .chk { color: var(--approved); font-weight: 700; }
+
+  /* follow-up badges on rows */
+  .fu-tag {
+    display: inline-block; margin-top: 3px; font-size: 10.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .4px; padding: 1px 7px; border-radius: 999px;
+    background: var(--brand-wash); color: var(--brand-ink); border: 1px solid transparent;
+  }
+  .fu-badge {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--brand-ink);
+    background: var(--brand-wash); border: 1px solid transparent; border-radius: 999px; padding: 4px 10px; white-space: nowrap;
+  }
+
+  /* Follow-up popover shown after clicking Complete */
+  .pop {
+    position: absolute; z-index: 60; width: 236px; background: var(--surface);
+    border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 14px 38px rgba(0,0,0,.3);
+    padding: 12px;
+  }
+  .pop.hidden { display: none; }
+  .pop-title { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+  .pop-sub { font-size: 12px; color: var(--ink-3); margin-bottom: 12px; line-height: 1.4; }
+  .pop-no {
+    width: 100%; font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer;
+    background: var(--approved); border: 1px solid var(--approved); color: #fff;
+    border-radius: 9px; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .pop-no:hover { filter: brightness(1.05); }
+  .pop-or { display: flex; align-items: center; gap: 8px; margin: 12px 0 10px; color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  .pop-or::before, .pop-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .when-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .when-btn {
+    font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; color: var(--brand-ink);
+    border: 1px solid var(--brand); background: var(--brand-wash); border-radius: 8px; padding: 9px 6px;
+  }
+  .when-btn:hover { background: var(--brand); color: #fff; }
+  .when-custom { display: flex; gap: 6px; margin-top: 6px; }
+  .when-custom input { flex: 1; min-width: 0; }
+
+  .empty { padding: 48px 20px; text-align: center; color: var(--ink-3); }
+  .empty .big { font-size: 32px; margin-bottom: 8px; }
+
+  .foot { text-align: center; color: var(--ink-3); font-size: 12px; margin-top: 16px; }
+  .synced { color: var(--ink-3); font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+  .synced .pulse { width: 7px; height: 7px; border-radius: 999px; background: var(--approved); }
+
+  /* ---- Admin modal ---- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(15,22,31,.5); backdrop-filter: blur(2px);
+    display: grid; place-items: start center; padding: 40px 16px; z-index: 50; overflow-y: auto;
+  }
+  .overlay.hidden { display: none; }
+  .modal {
+    width: 100%; max-width: 620px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.35); overflow: hidden;
+  }
+  .modal-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 18px 20px; border-bottom: 1px solid var(--line);
+  }
+  .modal-title { font-size: 17px; font-weight: 700; letter-spacing: -.2px; }
+  .modal-sub { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+  .modal-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
+  .policy {
+    display: flex; gap: 12px; align-items: flex-start; background: var(--amber-wash);
+    border: 1px solid transparent; border-radius: 10px; padding: 14px;
+  }
+  .policy-ico { font-size: 20px; line-height: 1; }
+  .policy-ttl { font-size: 13.5px; font-weight: 600; }
+  .policy-sub { font-size: 12.5px; color: var(--ink-2); margin-top: 3px; line-height: 1.5; }
+  .members-head { display: flex; align-items: baseline; justify-content: space-between; }
+  .members-head span:first-child { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-3); font-weight: 600; }
+  .members-hint { font-size: 12px; color: var(--ink-3); }
+  .member {
+    display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-top: 1px solid var(--line);
+  }
+  .member .av { width: 34px; height: 34px; border-radius: 999px; flex: none; display: grid; place-items: center; color: #fff; font-weight: 650; font-size: 13px; }
+  .member .who { flex: 1; }
+  .member .nm { font-weight: 600; font-size: 14px; }
+  .member .em { font-size: 12.5px; color: var(--ink-3); }
+  .role-pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .4px; }
+  .role-pill.mgr { background: var(--brand-wash); color: var(--brand-ink); }
+  .role-pill.adv { background: var(--surface-2); color: var(--ink-3); border: 1px solid var(--line); }
+  .switch { position: relative; width: 44px; height: 24px; flex: none; cursor: pointer; }
+  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .switch .track { position: absolute; inset: 0; background: var(--line-strong); border-radius: 999px; transition: background .15s; }
+  .switch .knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: #fff; border-radius: 999px; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+  .switch input:checked ~ .track { background: var(--brand); }
+  .switch input:checked ~ .knob { transform: translateX(20px); }
+  .switch input:focus-visible ~ .track { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .member.owner .switch { opacity: .5; pointer-events: none; }
+  .member .remove { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-3); cursor: pointer; font-size: 13px; flex: none; }
+  .member .remove:hover { border-color: var(--declined); color: var(--declined); background: var(--declined-wash); }
+  .guest-block { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 2px; }
+  .guest-add { display: flex; gap: 8px; margin-top: 12px; }
+  .guest-add input { flex: 1; }
+  .guest-hint { font-size: 12px; color: var(--ink-3); margin-top: 8px; line-height: 1.5; }
+  .guest-empty { font-size: 12.5px; color: var(--ink-3); padding: 10px 4px; font-style: italic; }
+  .modal-foot { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--surface-2); }
+
+  @media (max-width: 720px) {
+    .tiles { grid-template-columns: 1fr 1fr; }
+    .toolbar { gap: 8px; }
+    input[type="search"] { min-width: 120px; flex: 1; }
+  }
+</style>
+
+<header class="topbar">
+  <div class="logo">
+    <div class="mark">CB</div>
+    <div>
+      <h1>Callback Tracker</h1>
+      <div class="sub">Precision Auto &amp; Tire</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <span class="synced" id="syncLine"><span class="pulse"></span> Loading…</span>
+  <button class="icon-btn" id="adminBtn" title="Team &amp; access settings" aria-label="Team and access settings" style="display:none">⚙</button>
+  <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+  <a class="userchip" id="userChip" href="/auth/logout" title="Sign out"><span class="av" id="userAv">··</span> <span id="roleLabel">…</span></a>
+</header>
+
+<div class="wrap">
+  <section class="tiles">
+    <div class="tile">
+      <div class="lbl">Open Callbacks</div>
+      <div class="val tnum" id="t-open">0</div>
+      <div class="meta" id="t-open-meta">across all advisors</div>
+    </div>
+    <div class="tile approved">
+      <div class="lbl">Approved &amp; Done</div>
+      <div class="val tnum" id="t-appr">$0</div>
+      <div class="meta">work customer paid for</div>
+    </div>
+    <div class="tile declined">
+      <div class="lbl">Declined</div>
+      <div class="val tnum" id="t-decl">$0</div>
+      <div class="meta">the callback opportunity</div>
+    </div>
+    <div class="tile overdue">
+      <div class="lbl">Overdue (3+ days)</div>
+      <div class="val tnum" id="t-over">0</div>
+      <div class="meta">needs a callback now</div>
+    </div>
+  </section>
+
+  <section class="scoreboard hidden" id="scoreboard">
+    <div class="sb-head">
+      <span class="tag">Manager</span>
+      <span class="ttl">Advisor scoreboard</span>
+      <span style="flex:1"></span>
+      <div class="sb-presets" id="sb-presets">
+        <button class="chip" data-range="this-week">This week</button>
+        <button class="chip active" data-range="last-week">Last week</button>
+        <button class="chip" data-range="this-month">This month</button>
+      </div>
+      <div class="field"><label>From</label><input type="date" id="sb-from"></div>
+      <div class="field"><label>To</label><input type="date" id="sb-to"></div>
+    </div>
+    <div class="sb-note" id="sb-note"></div>
+    <table class="sb-table">
+      <thead>
+        <tr>
+          <th>Advisor</th>
+          <th class="num">Open</th>
+          <th class="num">Overdue</th>
+          <th class="num">Completed</th>
+          <th style="width:120px">Progress</th>
+          <th class="num">Declined $ open</th>
+        </tr>
+      </thead>
+      <tbody id="sb-rows"></tbody>
+    </table>
+  </section>
+
+  <div class="toolbar">
+    <div class="tabs">
+      <button class="tab active" data-view="active">Active <span class="count" id="c-active">0</span></button>
+      <button class="tab" data-view="followups">Follow-ups <span class="count" id="c-followups">0</span></button>
+      <button class="tab" data-view="completed">Completed <span class="count" id="c-completed">0</span></button>
+    </div>
+    <div class="spacer" style="flex:1"></div>
+    <div class="field">
+      <label>Advisor</label>
+      <select id="f-advisor"><option value="">All</option></select>
+    </div>
+    <div class="field">
+      <label>Range</label>
+      <select id="f-range">
+        <option value="custom">Custom</option>
+        <option value="today">Today</option>
+        <option value="yesterday">Yesterday</option>
+        <option value="last7">Last 7 days</option>
+        <option value="this-week">This week</option>
+        <option value="last-week">Last week</option>
+        <option value="this-month" selected>This month</option>
+        <option value="last-month">Last month</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>From</label>
+      <input type="date" id="f-from" value="2026-07-01">
+    </div>
+    <div class="field">
+      <label>To</label>
+      <input type="date" id="f-to" value="2026-07-13">
+    </div>
+    <input type="search" id="f-search" placeholder="Search customer or RO#…">
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="sortable" data-sort="date">Date Posted <span class="arrow"></span></th>
+          <th class="sortable" data-sort="advisor">Advisor <span class="arrow"></span></th>
+          <th class="sortable" data-sort="customer">Customer <span class="arrow"></span></th>
+          <th class="sortable" data-sort="ro">RO # <span class="arrow"></span></th>
+          <th class="sortable num" data-sort="approved">Approved &amp; Done <span class="arrow"></span></th>
+          <th class="sortable num" data-sort="declined">Declined <span class="arrow"></span></th>
+          <th style="min-width:200px">Notes</th>
+          <th class="actions"></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <div class="foot" id="foot">Reading from your database · closed repair orders synced nightly from Tekmetric.</div>
+</div>
+
+<div class="pop hidden" id="fuPop">
+  <div class="pop-title">Follow-up needed?</div>
+  <div class="pop-sub">This call gets logged either way.</div>
+  <button class="pop-no" id="fuNo">✓ No — mark resolved</button>
+  <div class="pop-or">or follow up</div>
+  <div class="when-grid">
+    <button class="when-btn" data-days="1">Tomorrow</button>
+    <button class="when-btn" data-days="3">In 3 days</button>
+    <button class="when-btn" data-days="7">Next week</button>
+    <button class="when-btn" data-days="14">In 2 weeks</button>
+  </div>
+  <div class="when-custom">
+    <input type="date" id="fuDate">
+    <button class="btn primary" id="fuDateGo">Set</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="adminOverlay">
+  <div class="modal" role="dialog" aria-label="Team and access settings">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Team &amp; Access</div>
+        <div class="modal-sub">Only you, the owner, can open this page.</div>
+      </div>
+      <button class="icon-btn" id="adminClose" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="policy">
+        <div class="policy-ico">🔓</div>
+        <div>
+          <div class="policy-ttl">Anyone at <b id="admin-domain">your domain</b> can sign in</div>
+          <div class="policy-sub">Employees just sign in with their Google Workspace account — no setup needed. People outside your company can't get in unless you add them below.</div>
+        </div>
+      </div>
+
+      <div class="members-head">
+        <span>Team members</span>
+        <span class="members-hint">Toggle who can see the manager scoreboard</span>
+      </div>
+      <div id="member-list"></div>
+
+      <div class="guest-block">
+        <div class="members-head">
+          <span>Guest access — outside your domain</span>
+          <span class="members-hint">People without a company email</span>
+        </div>
+        <div id="guest-list"></div>
+        <form class="guest-add" id="guest-form">
+          <input type="email" id="guest-email" placeholder="name@example.com" required>
+          <button type="submit" class="btn primary">+ Add guest</button>
+        </form>
+        <div class="guest-hint" id="guest-hint">They'll be able to sign in with that Google account and see callbacks. Toggle Manager if they also need the scoreboard.</div>
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <span class="synced" style="font-size:12px">Changes save automatically</span>
+      <button class="btn primary" id="adminDone">Done</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
