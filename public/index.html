@@ -109,6 +109,28 @@
   .wrap { max-width: 1240px; margin: 0 auto; padding: 20px; }
   .filterbar { position: sticky; top: 59px; z-index: 15; }
   .filter-lead { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-3); font-weight: 700; }
+  .print-head { display: none; }
+
+  /* ---- Print: clean list, no screen chrome ---- */
+  @media print {
+    @page { margin: 14mm; }
+    :root { --bg: #fff; --surface: #fff; }
+    body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    header.topbar, .filterbar, .toolbar, .scoreboard, .foot,
+    .actions, .overlay, .pop { display: none !important; }
+    .print-head { display: block !important; margin: 0 0 14px; }
+    .print-head h2 { margin: 0; font-size: 18px; }
+    .print-head .sub { font-size: 12px; color: #444; margin-top: 3px; }
+    .wrap { max-width: none; margin: 0; padding: 0; }
+    .tiles { margin-bottom: 14px; }
+    .tile { box-shadow: none; break-inside: avoid; }
+    .table-wrap { border: none; box-shadow: none; overflow: visible; }
+    table { min-width: 0; }
+    thead { display: table-header-group; } /* repeat header each page */
+    tr { break-inside: avoid; }
+    .notes-input { border: none !important; background: transparent !important; height: auto !important; padding: 0; }
+    .ro-link .ext { display: none; }
+  }
 
   /* ---- Summary tiles ---- */
   .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
@@ -405,7 +427,10 @@
     </div>
     <div class="spacer" style="flex:1"></div>
     <input type="search" id="f-search" placeholder="Search customer or RO#…">
+    <button class="btn" id="printBtn" title="Print this list">🖨 Print</button>
   </div>
+
+  <div class="print-head" id="print-head"></div>
 
   <section class="tiles">
     <div class="tile">

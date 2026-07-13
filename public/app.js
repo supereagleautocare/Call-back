@@ -434,6 +434,18 @@ function wireEvents() {
     }
   });
 
+  // print the current list
+  $("printBtn").onclick = () => {
+    const tab = view === "active" ? "Active callbacks" : view === "followups" ? "Follow-ups" : "Completed callbacks";
+    const noteFmt = (v) => v ? fmtDate(v).replace(/<[^>]+>/g, "") : "";
+    const adv = advVal();
+    $("print-head").innerHTML =
+      `<h2>Super Eagle Auto Care — ${tab}</h2>` +
+      `<div class="sub">${noteFmt($("f-from").value)} – ${noteFmt($("f-to").value)}` +
+      ` · ${adv || "All advisors"} · printed ${new Date().toLocaleDateString()}</div>`;
+    window.print();
+  };
+
   // theme + escape
   $("themeBtn").onclick = () => {
     const cur = document.documentElement.getAttribute("data-theme");
