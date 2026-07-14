@@ -283,6 +283,16 @@
   }
   .done-badge .chk { color: var(--approved); font-weight: 700; }
 
+  /* scoreboard drill-down */
+  .sb-table td.clickable { cursor: pointer; }
+  .sb-table td.clickable:hover { background: var(--surface-2); text-decoration: underline; }
+  .stat-table { width: 100%; border-collapse: collapse; }
+  .stat-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-3); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .stat-table th.num, .stat-table td.num { text-align: right; }
+  .stat-table td { padding: 9px 10px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .stat-table tr:last-child td { border-bottom: 0; }
+  .stat-total { font-size: 12.5px; color: var(--ink-2); margin-bottom: 10px; }
+
   /* call history modal */
   .hist-btn {
     font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; margin-bottom: 7px;
@@ -534,6 +544,19 @@
   <div class="when-custom">
     <input type="date" id="fuDate">
     <button class="btn primary" id="fuDateGo">Set</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="statOverlay">
+  <div class="modal" role="dialog" aria-label="Stat detail">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="stat-title">Details</div>
+        <div class="modal-sub" id="stat-sub"></div>
+      </div>
+      <button class="icon-btn" id="stat-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" id="stat-body"></div>
   </div>
 </div>
 

@@ -244,6 +244,42 @@ export function apiRouter() {
     res.json([...board.values()].map((b) => ({ ...b, declinedOpen: centsToDollars(b.declinedOpen) })));
   });
 
+  // The callbacks behind one scoreboard number (drill-down).
+  // ?advisor= &stat=open|overdue|completed|declined &from&to
+  r.get("/scoreboard/detail", requireManager, async (req, res) => {
+    const { advisor, stat, from, to } = req.query;
+    const params = [];
+    const push = (v) => { params.push(v); return `$${params.length}`; };
+    const where = [];
+    if (advisor) where.push(`ro.advisor_name = ${push(advisor)}`);
+
+    if (stat === "completed") {
+      where.push("ci.completed = true");
+      if (from) where.push(`ci.completed_at >= ${push(from)}`);
+      if (to) where.push(`ci.completed_at <= (${push(to)}::date + 1)`);
+    } else {
+      where.push("ci.completed = false");
+      if (from) where.push(`ro.posted_date >= ${push(from)}`);
+      if (to) where.push(`ro.posted_date <= (${push(to)}::date + 1)`);
+    }
+
+    const order = stat === "completed" ? "ci.completed_at DESC"
+      : stat === "declined" ? "ro.declined_cents DESC" : "ro.posted_date DESC";
+    const rows = await query(`${SELECT_JOIN} WHERE ${where.join(" AND ")} ORDER BY ${order}`, params);
+    let list = rows.rows.map(toCallback);
+
+    if (stat === "overdue" || stat === "declined") {
+      const today = new Date();
+      const age = (d) => Math.floor((today - new Date(d)) / 86400000);
+      if (stat === "overdue") {
+        list = list.filter((r) => { const eff = r.kind === "followup" ? r.dueDate : r.postedDate; return eff && age(eff) >= 3; });
+      } else {
+        list = list.filter((r) => r.declined > 0); // only rows contributing declined $
+      }
+    }
+    res.json(list);
+  });
+
   // --- Owner: trigger a Tekmetric pull ------------------------------------
   let syncing = false;
   r.get("/admin/sync", requireOwner, (_req, res) => res.json({ running: syncing }));

@@ -329,13 +329,49 @@ async function renderScoreboard() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><span class="adv-name">${b.advisor}</span></td>
-      <td class="num tnum">${b.open}</td>
-      <td class="num tnum ${b.overdue ? "flag" : "flag ok"}">${b.overdue || "—"}</td>
-      <td class="num tnum">${b.completed}</td>
+      <td class="num tnum clickable" data-stat="open" data-label="Open callbacks">${b.open}</td>
+      <td class="num tnum clickable ${b.overdue ? "flag" : "flag ok"}" data-stat="overdue" data-label="Overdue callbacks">${b.overdue || "—"}</td>
+      <td class="num tnum clickable" data-stat="completed" data-label="Completed callbacks">${b.completed}</td>
       <td><div class="bar"><span style="width:${pct}%"></span></div></td>
-      <td class="num tnum money neg">${money(b.declinedOpen)}</td>`;
+      <td class="num tnum money neg clickable" data-stat="declined" data-label="Open declined work">${money(b.declinedOpen)}</td>`;
+    tr.querySelectorAll("td.clickable").forEach((td) =>
+      td.onclick = () => openStatDetail(b.advisor, td.dataset.stat, td.dataset.label));
     tb.appendChild(tr);
   }
+}
+
+// Drill-down popup listing the callbacks behind one scoreboard number.
+async function openStatDetail(advisor, stat, label) {
+  const from = $("f-from").value, to = $("f-to").value;
+  const dfmt = (v) => fmtDate(v).replace(/<[^>]+>/g, "");
+  $("stat-title").textContent = `${advisor} — ${label}`;
+  $("stat-sub").textContent = `${fmtDay(from).replace(/<[^>]+>/g, "")} – ${fmtDay(to).replace(/<[^>]+>/g, "")}`;
+  const body = $("stat-body");
+  body.innerHTML = "Loading…";
+  $("statOverlay").classList.remove("hidden");
+
+  const p = new URLSearchParams({ advisor, stat });
+  if (from) p.set("from", from);
+  if (to) p.set("to", to);
+  const rows = await api("/api/scoreboard/detail?" + p.toString());
+  if (!rows.length) { body.innerHTML = `<div class="guest-empty">Nothing here for this range.</div>`; return; }
+
+  const dateCol = stat === "completed" ? "Completed" : "Posted";
+  const totalDecl = rows.reduce((s, r) => s + r.declined, 0);
+  const head = stat === "declined" || stat === "completed"
+    ? `<div class="stat-total">${rows.length} callbacks · ${money(totalDecl)} declined total</div>` : `<div class="stat-total">${rows.length} callbacks</div>`;
+  const trs = rows.map((r) => `
+    <tr>
+      <td><a class="ro-link" href="${r.roLink}" target="_blank" rel="noopener">#${r.roNumber} ↗</a></td>
+      <td>${r.customer}</td>
+      <td>${stat === "completed" ? dfmt(r.completedAt) : dfmt(r.postedDate)}</td>
+      <td class="num money pos">${money(r.approved)}</td>
+      <td class="num money neg">${money(r.declined)}</td>
+    </tr>`).join("");
+  body.innerHTML = head +
+    `<div style="overflow-x:auto"><table class="stat-table">
+       <thead><tr><th>RO #</th><th>Customer</th><th>${dateCol}</th><th class="num">Approved</th><th class="num">Declined</th></tr></thead>
+       <tbody>${trs}</tbody></table></div>`;
 }
 
 // ============================================================================
@@ -492,6 +528,11 @@ function wireEvents() {
   document.querySelectorAll("#fuPop .when-btn").forEach((b) => b.onclick = () => completeNow(shift(TODAY, +b.dataset.days)));
   $("fuDateGo").onclick = () => { const d = $("fuDate").value; if (d) completeNow(d); };
 
+  // scoreboard drill-down modal
+  const statOv = $("statOverlay");
+  $("stat-close").onclick = () => statOv.classList.add("hidden");
+  statOv.addEventListener("click", (e) => { if (e.target === statOv) statOv.classList.add("hidden"); });
+
   // history modal
   const histOv = $("historyOverlay");
   $("history-close").onclick = () => histOv.classList.add("hidden");
@@ -538,5 +579,5 @@ function wireEvents() {
       : (matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
     document.documentElement.setAttribute("data-theme", next);
   };
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("adminOverlay").classList.add("hidden"); $("historyOverlay").classList.add("hidden"); closeFu(); } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("adminOverlay").classList.add("hidden"); $("historyOverlay").classList.add("hidden"); $("statOverlay").classList.add("hidden"); closeFu(); } });
 }
