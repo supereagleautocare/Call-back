@@ -356,21 +356,22 @@ async function openStatDetail(advisor, stat, label) {
   const rows = await api("/api/scoreboard/detail?" + p.toString());
   if (!rows.length) { body.innerHTML = `<div class="guest-empty">Nothing here for this range.</div>`; return; }
 
-  const dateCol = stat === "completed" ? "Completed" : "Posted";
+  const done = stat === "completed";
+  const dateCol = done ? "Completed" : "Posted";
   const totalDecl = rows.reduce((s, r) => s + r.declined, 0);
-  const head = stat === "declined" || stat === "completed"
-    ? `<div class="stat-total">${rows.length} callbacks · ${money(totalDecl)} declined total</div>` : `<div class="stat-total">${rows.length} callbacks</div>`;
+  const head = `<div class="stat-total">${rows.length} callbacks${(done || stat === "declined") ? ` · ${money(totalDecl)} declined total` : ""}</div>`;
   const trs = rows.map((r) => `
     <tr>
       <td><a class="ro-link" href="${r.roLink}" target="_blank" rel="noopener">#${r.roNumber} ↗</a></td>
       <td>${r.customer}</td>
-      <td>${stat === "completed" ? dfmt(r.completedAt) : dfmt(r.postedDate)}</td>
+      <td>${done ? dfmt(r.completedAt) : dfmt(r.postedDate)}</td>
+      ${done ? `<td>${r.completedBy || "—"}</td>` : ""}
       <td class="num money pos">${money(r.approved)}</td>
       <td class="num money neg">${money(r.declined)}</td>
     </tr>`).join("");
   body.innerHTML = head +
     `<div style="overflow-x:auto"><table class="stat-table">
-       <thead><tr><th>RO #</th><th>Customer</th><th>${dateCol}</th><th class="num">Approved</th><th class="num">Declined</th></tr></thead>
+       <thead><tr><th>RO #</th><th>Customer</th><th>${dateCol}</th>${done ? "<th>By</th>" : ""}<th class="num">Approved</th><th class="num">Declined</th></tr></thead>
        <tbody>${trs}</tbody></table></div>`;
 }
 
