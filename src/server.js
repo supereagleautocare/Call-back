@@ -57,7 +57,8 @@ app.get("*", requireAuth, (_req, res) => res.sendFile(join(publicDir, "index.htm
 // Nightly incremental sync at 3:00 AM (server time). Cron-guarded + rate-capped.
 cron.schedule("0 3 * * *", () => {
   console.log("⏰ Nightly sync starting…");
-  runSync().catch((e) => console.error("Nightly sync error:", e));
+  // force: the scheduled daily run always runs — the 12h cooldown only guards manual spam.
+  runSync({ force: true }).catch((e) => console.error("Nightly sync error:", e));
 });
 
 app.listen(PORT, () => console.log(`Callback Tracker running on :${PORT}`));
