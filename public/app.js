@@ -15,14 +15,26 @@ const api = async (path, opts) => {
 // --- date helpers (real "today") -------------------------------------------
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const money = (n) => "$" + Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const d0 = (v) => { const d = new Date(v); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+const MS_DAY = 86400000;
+// Calendar-date keys (avoid timezone drift):
+const todayMs = () => { const n = new Date(); return Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()); };
+const tsMs = (v) => { const d = new Date(v); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); }; // timestamp -> local cal date
+const dayMs = (v) => { const [y,m,d] = String(v).slice(0,10).split("-").map(Number); return Date.UTC(y, m-1, d); }; // date-only -> cal date
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-const shift = (base, days) => { const d = new Date(base); d.setDate(d.getDate() + days); return iso(d); };
-const daysOpen = (v) => Math.floor((d0(new Date()) - d0(v)) / 86400000);
+// date-string math done in UTC so it never shifts a day across timezones
+const shift = (base, days) => { const [y,m,d] = base.split("-").map(Number); const dt = new Date(Date.UTC(y, m-1, d)); dt.setUTCDate(dt.getUTCDate() + days); return dt.toISOString().slice(0,10); };
+const daysOpen = (v) => Math.round((todayMs() - tsMs(v)) / MS_DAY);
+// format a timestamp (posted/completed) as a local calendar date
 const fmtDate = (v) => {
   if (!v) return "";
   const d = new Date(v);
   return `<span>${MONTHS[d.getMonth()]} ${d.getDate()}</span> <span class="yr">'${String(d.getFullYear()).slice(2)}</span>`;
+};
+// format a date-only value ("YYYY-MM-DD") from its parts — no timezone shift
+const fmtDay = (v) => {
+  if (!v) return "";
+  const [y,m,d] = String(v).slice(0,10).split("-").map(Number);
+  return `<span>${MONTHS[m-1]} ${d}</span> <span class="yr">'${String(y).slice(2)}</span>`;
 };
 const initials = (n) => (n || "?").split(" ").map((x) => x[0]).join("").slice(0,2).toUpperCase();
 const TODAY = iso(new Date());
@@ -48,7 +60,11 @@ function ageTag(v) {
   return `<span class="age ${cls}">${label}</span>`;
 }
 const effDate = (r) => (r.kind === "followup" ? r.dueDate : r.postedDate);
-const isOverdue = (r) => !r.completed && effDate(r) && daysOpen(effDate(r)) >= 3;
+// days aged on the effective date (a follow-up's due date, else the post date)
+const effAge = (r) => r.kind === "followup"
+  ? Math.round((todayMs() - dayMs(r.dueDate)) / MS_DAY)
+  : daysOpen(r.postedDate);
+const isOverdue = (r) => !r.completed && effAge(r) >= 3;
 
 // --- state -----------------------------------------------------------------
 let me = null;
@@ -169,9 +185,9 @@ function renderTable(rows) {
     let dateCell = fmtDate(r.postedDate);
     if (!r.completed) {
       if (r.kind === "followup") {
-        const dueIn = daysOpen(r.dueDate);
-        const label = dueIn > 0 ? `${dueIn}d overdue` : dueIn === 0 ? "due today" : `due in ${-dueIn}d`;
-        dateCell = `${fmtDate(r.dueDate)}<br><span class="fu-tag">🔁 Attempt ${r.attempt}</span> <span class="age ${dueIn >= 0 ? "over" : "warn"}">${label}</span>`;
+        const pastDue = Math.round((todayMs() - dayMs(r.dueDate)) / MS_DAY); // >0 overdue, 0 today, <0 future
+        const label = pastDue > 0 ? `${pastDue}d overdue` : pastDue === 0 ? "due today" : `due in ${-pastDue}d`;
+        dateCell = `${fmtDay(r.dueDate)}<br><span class="fu-tag">🔁 Attempt ${r.attempt}</span> <span class="age ${pastDue >= 0 ? "over" : "warn"}">${label}</span>`;
       } else {
         dateCell = `${fmtDate(r.postedDate)}<br>${ageTag(r.postedDate)}`;
       }
@@ -194,7 +210,7 @@ function renderTable(rows) {
         `<div class="date" style="font-weight:600">${fmtDate(r.completedAt)}</div>` +
         `<span class="done-badge"><span class="chk">✓</span> ${r.completedBy || ""}</span>`;
       const fu = r.followUpDate
-        ? `<div style="margin-top:6px"><span class="fu-badge">🔁 Follow-up → ${fmtDate(r.followUpDate).replace(/<[^>]+>/g,"")}</span></div>`
+        ? `<div style="margin-top:6px"><span class="fu-badge">🔁 Follow-up → ${fmtDay(r.followUpDate).replace(/<[^>]+>/g,"")}</span></div>`
         : "";
       tr.children[7].innerHTML = done + fu;
     } else {
@@ -281,7 +297,7 @@ async function renderScoreboard() {
   if (to) params.set("to", to);
   if (adv) params.set("advisor", adv);
   const rows = await api("/api/scoreboard?" + params.toString());
-  const noteFmt = (v) => fmtDate(v).replace(/<[^>]+>/g, "");
+  const noteFmt = (v) => fmtDay(v).replace(/<[^>]+>/g, "");
   $("sb-note").innerHTML =
     `Open, overdue, completed &amp; declined-$ per advisor for <b>${noteFmt(from)} – ${noteFmt(to)}</b>.`;
   const tb = $("sb-rows");
@@ -311,7 +327,7 @@ async function openHistory(roId, roNumber) {
   $("historyOverlay").classList.remove("hidden");
   const items = await api(`/api/ro/${roId}/history`);
   const done = (items || []).filter((i) => i.completed); // earlier calls that were logged
-  const dfmt = (v) => fmtDate(v).replace(/<[^>]+>/g, "");
+  const plain = (h) => h.replace(/<[^>]+>/g, "");
   if (!done.length) {
     body.innerHTML = `<div class="guest-empty">No earlier calls have been logged on this RO yet.</div>`;
     return;
@@ -321,9 +337,9 @@ async function openHistory(roId, roNumber) {
     const div = document.createElement("div");
     div.className = "hist-item";
     div.innerHTML =
-      `<div class="hist-head"><b>Attempt ${it.attempt}</b> · ${it.completedBy || ""} · ${dfmt(it.completedAt)}</div>` +
+      `<div class="hist-head"><b>Attempt ${it.attempt}</b> · ${it.completedBy || ""} · ${plain(fmtDate(it.completedAt))}</div>` +
       `<div class="hist-note">${escapeHtml(it.notes) || '<span style="color:var(--ink-3)">(no note)</span>'}</div>` +
-      (it.followUpDate ? `<span class="hist-fu">🔁 scheduled follow-up → ${dfmt(it.followUpDate)}</span>` : "");
+      (it.followUpDate ? `<span class="hist-fu">🔁 scheduled follow-up → ${plain(fmtDay(it.followUpDate))}</span>` : "");
     body.appendChild(div);
   }
 }
@@ -485,7 +501,7 @@ function wireEvents() {
   // print the current list
   $("printBtn").onclick = () => {
     const tab = view === "active" ? "Active callbacks" : view === "followups" ? "Follow-ups" : "Completed callbacks";
-    const noteFmt = (v) => v ? fmtDate(v).replace(/<[^>]+>/g, "") : "";
+    const noteFmt = (v) => v ? fmtDay(v).replace(/<[^>]+>/g, "") : "";
     const adv = advVal();
     $("print-head").innerHTML =
       `<h2>Super Eagle Auto Care — ${tab}</h2>` +
