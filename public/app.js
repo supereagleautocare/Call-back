@@ -279,12 +279,33 @@ function openFuPop(id, getNotes, btn) {
 function fuOutside(e) { if (!$("fuPop").contains(e.target)) closeFu(); }
 function closeFu() { $("fuPop").classList.add("hidden"); fuId = null; document.removeEventListener("click", fuOutside); }
 async function completeNow(followUpDate) {
-  const notes = fuGetNotes();
-  if (!notes.trim()) return;
+  const notes = (fuGetNotes() || "").trim();
+  if (!notes) { toast("Add a note before completing.", false); return; }
   const id = fuId;
   closeFu();
-  await api(`/api/callbacks/${id}/complete`, { method: "POST", body: JSON.stringify({ notes, followUpDate: followUpDate || null }) });
-  refresh();
+  try {
+    await api(`/api/callbacks/${id}/complete`, { method: "POST", body: JSON.stringify({ notes, followUpDate: followUpDate || null }) });
+    toast(followUpDate
+      ? `Follow-up set for ${fmtDay(followUpDate).replace(/<[^>]+>/g, "")} — now in the Follow-ups tab`
+      : "Callback marked complete");
+    refresh();
+  } catch {
+    toast("Couldn't save that — please try again.", false);
+  }
+}
+
+// small transient message at the bottom of the screen
+function toast(msg, ok = true) {
+  let t = document.getElementById("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.style.cssText =
+    "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:200;" +
+    "padding:11px 18px;border-radius:10px;font-weight:600;font-size:14px;color:#fff;" +
+    "box-shadow:0 8px 24px rgba(0,0,0,.28);transition:opacity .3s;opacity:1;" +
+    "background:" + (ok ? "#1f7a43" : "#b23a2f");
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = "0"; }, 2800);
 }
 
 // ============================================================================
