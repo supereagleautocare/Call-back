@@ -80,9 +80,9 @@ export function apiRouter() {
     if (to) { cp.push(to); cActiveRange += ` AND ro.posted_date <= ($${cp.length}::date + 1)`; cDoneRange += ` AND ci.completed_at <= ($${cp.length}::date + 1)`; }
     const counts = await query(
       `SELECT
-         COUNT(*) FILTER (WHERE completed = false AND kind = 'initial'${cActiveRange})  AS active,
-         COUNT(*) FILTER (WHERE completed = false AND kind = 'followup'${cActiveRange}) AS followups,
-         COUNT(*) FILTER (WHERE completed = true${cDoneRange})                          AS completed
+         COUNT(*) FILTER (WHERE completed = false AND (kind = 'initial' OR due_date <= CURRENT_DATE)${cActiveRange})  AS active,
+         COUNT(*) FILTER (WHERE completed = false AND kind = 'followup' AND due_date > CURRENT_DATE${cActiveRange})   AS followups,
+         COUNT(*) FILTER (WHERE completed = true${cDoneRange})                                                       AS completed
        FROM callback_items ci JOIN repair_orders ro ON ro.tek_id = ci.ro_tek_id
        WHERE true${cadv}`, cp);
 
@@ -116,8 +116,10 @@ export function apiRouter() {
     const params = [];
     const add = (clause, val) => { params.push(val); where.push(clause.replace("?", `$${params.length}`)); };
 
-    if (view === "active") where.push("ci.completed = false AND ci.kind = 'initial'");
-    else if (view === "followups") where.push("ci.completed = false AND ci.kind = 'followup'");
+    // Active = work to do now: initial callbacks + follow-ups that have come due.
+    // Follow-ups tab = only those still scheduled for a future date.
+    if (view === "active") where.push("ci.completed = false AND (ci.kind = 'initial' OR ci.due_date <= CURRENT_DATE)");
+    else if (view === "followups") where.push("ci.completed = false AND ci.kind = 'followup' AND ci.due_date > CURRENT_DATE");
     else where.push("ci.completed = true");
 
     // Date range: completed tab filters by completed date; others by posted date.
