@@ -54,6 +54,7 @@ const isOverdue = (r) => !r.completed && effDate(r) && daysOpen(effDate(r)) >= 3
 let me = null;
 let view = "active";
 let sortKey = "date", sortDir = "desc";
+let userSorted = false; // false = use the server's natural order for the tab
 const advVal = () => $("f-advisor").value;
 
 // ============================================================================
@@ -127,9 +128,10 @@ async function refresh() {
 }
 
 function sortRows(rows) {
-  const key = { date: "postedDate", advisor: "advisor", customer: "customer", ro: "roNumber", approved: "approved", declined: "declined" }[sortKey];
+  const val = (r) => sortKey === "date" ? (effDate(r) || "")
+    : { advisor: r.advisor, customer: r.customer, ro: r.roNumber, approved: r.approved, declined: r.declined }[sortKey];
   return rows.sort((a, b) => {
-    let av = a[key], bv = b[key], cmp;
+    let av = val(a), bv = val(b), cmp;
     if (typeof av === "number") cmp = av - bv;
     else cmp = String(av ?? "").localeCompare(String(bv ?? ""));
     return sortDir === "asc" ? cmp : -cmp;
@@ -137,12 +139,15 @@ function sortRows(rows) {
 }
 
 function renderTable(rows) {
+  // Until the user clicks a header, keep the server's per-tab order
+  // (Active newest-effective-date first; Follow-ups soonest-due first).
   document.querySelectorAll("thead th.sortable").forEach((th) => {
-    const on = th.dataset.sort === sortKey;
+    const on = userSorted && th.dataset.sort === sortKey;
     th.classList.toggle("sorted", on);
     th.querySelector(".arrow").textContent = on ? (sortDir === "asc" ? "▲" : "▼") : "";
   });
-  sortRows(rows);
+  if (userSorted) sortRows(rows);
+  $("th-last").textContent = view === "completed" ? "Completed" : "";
   $("th-last").textContent = view === "completed" ? "Completed" : "";
 
   const tb = $("rows");
@@ -390,10 +395,11 @@ function wireEvents() {
   // tabs
   document.querySelectorAll(".tab").forEach((t) => t.onclick = () => {
     document.querySelectorAll(".tab").forEach((x) => x.classList.remove("active"));
-    t.classList.add("active"); view = t.dataset.view; refresh();
+    t.classList.add("active"); view = t.dataset.view; userSorted = false; refresh();
   });
   // sortable headers
   document.querySelectorAll("thead th.sortable").forEach((th) => th.onclick = () => {
+    userSorted = true;
     const k = th.dataset.sort;
     if (sortKey === k) sortDir = sortDir === "asc" ? "desc" : "asc";
     else { sortKey = k; sortDir = (k === "approved" || k === "declined" || k === "date") ? "desc" : "asc"; }

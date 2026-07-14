@@ -117,15 +117,28 @@ export function apiRouter() {
     const add = (clause, val) => { params.push(val); where.push(clause.replace("?", `$${params.length}`)); };
 
     // Active = work to do now: initial callbacks + follow-ups that have come due.
-    // Follow-ups tab = only those still scheduled for a future date.
-    if (view === "active") where.push("ci.completed = false AND (ci.kind = 'initial' OR ci.due_date <= CURRENT_DATE)");
-    else if (view === "followups") where.push("ci.completed = false AND ci.kind = 'followup' AND ci.due_date > CURRENT_DATE");
-    else where.push("ci.completed = true");
+    //   Ordered by "effective date" (a follow-up's due date, else the RO posted
+    //   date), newest first — so a follow-up appears at the top on its due date
+    //   and gets pushed down as newer days arrive.
+    // Follow-ups tab = only those still scheduled ahead, soonest due first.
+    let dateCol, orderDir = "DESC", applyRange = true;
+    if (view === "active") {
+      where.push("ci.completed = false AND (ci.kind = 'initial' OR ci.due_date <= CURRENT_DATE)");
+      dateCol = "COALESCE(ci.due_date, ro.posted_date)";
+    } else if (view === "followups") {
+      where.push("ci.completed = false AND ci.kind = 'followup' AND ci.due_date > CURRENT_DATE");
+      dateCol = "ci.due_date";
+      orderDir = "ASC";      // next-to-come-due at the top
+      applyRange = false;    // future items live outside the "up to today" range
+    } else {
+      where.push("ci.completed = true");
+      dateCol = "ci.completed_at";
+    }
 
-    // Date range: completed tab filters by completed date; others by posted date.
-    const dateCol = view === "completed" ? "ci.completed_at" : "ro.posted_date";
-    if (from) add(`${dateCol} >= ?`, from);
-    if (to) add(`${dateCol} <= (?::date + 1)`, to); // inclusive of the "to" day
+    if (applyRange) {
+      if (from) add(`${dateCol} >= ?`, from);
+      if (to) add(`${dateCol} <= (?::date + 1)`, to); // inclusive of the "to" day
+    }
     if (advisor) add("ro.advisor_name = ?", advisor);
     if (q) {
       params.push(q);
@@ -133,7 +146,7 @@ export function apiRouter() {
       where.push(`(ro.customer_name ILIKE '%'||${p}||'%' OR ro.ro_number::text ILIKE '%'||${p}||'%')`);
     }
 
-    const sql = `${SELECT_JOIN} WHERE ${where.join(" AND ")} ORDER BY ${dateCol} DESC`;
+    const sql = `${SELECT_JOIN} WHERE ${where.join(" AND ")} ORDER BY ${dateCol} ${orderDir}`;
     const rows = await query(sql, params);
     res.json(rows.rows.map(toCallback));
   });
