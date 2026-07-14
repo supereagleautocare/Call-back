@@ -151,6 +151,19 @@ export function apiRouter() {
     res.json(rows.rows.map(toCallback));
   });
 
+  // Full call history for one repair order (all attempts, oldest first).
+  r.get("/ro/:roId/history", async (req, res) => {
+    const rows = await query(
+      `SELECT attempt, kind, notes, completed, completed_by, completed_at, due_date, follow_up_date
+       FROM callback_items WHERE ro_tek_id = $1
+       ORDER BY attempt ASC, created_at ASC`, [req.params.roId]);
+    res.json(rows.rows.map((x) => ({
+      attempt: x.attempt, kind: x.kind, notes: x.notes, completed: x.completed,
+      completedBy: x.completed_by, completedAt: x.completed_at,
+      dueDate: x.due_date, followUpDate: x.follow_up_date,
+    })));
+  });
+
   // Save a note (autosave from the textarea)
   r.patch("/callbacks/:id/notes", async (req, res) => {
     const { notes = "" } = req.body;

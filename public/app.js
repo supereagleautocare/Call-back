@@ -198,6 +198,13 @@ function renderTable(rows) {
         : "";
       tr.children[7].innerHTML = done + fu;
     } else {
+      // Repeat callbacks: show a button to review notes from earlier attempts.
+      if (r.attempt > 1) {
+        const hist = document.createElement("button");
+        hist.className = "hist-btn"; hist.innerHTML = "🕘 Previous notes";
+        hist.onclick = () => openHistory(r.roId, r.roNumber);
+        notesCell.appendChild(hist);
+      }
       const ta = document.createElement("textarea");
       ta.className = "notes-input"; ta.rows = 2; ta.placeholder = "What happened on the callback?"; ta.value = r.notes || "";
       const grow = () => { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; };
@@ -291,6 +298,33 @@ async function renderScoreboard() {
       <td><div class="bar"><span style="width:${pct}%"></span></div></td>
       <td class="num tnum money neg">${money(b.declinedOpen)}</td>`;
     tb.appendChild(tr);
+  }
+}
+
+// ============================================================================
+// Previous-notes / call history popup
+// ============================================================================
+async function openHistory(roId, roNumber) {
+  $("history-title").textContent = `RO #${roNumber} — call history`;
+  const body = $("history-body");
+  body.innerHTML = "Loading…";
+  $("historyOverlay").classList.remove("hidden");
+  const items = await api(`/api/ro/${roId}/history`);
+  const done = (items || []).filter((i) => i.completed); // earlier calls that were logged
+  const dfmt = (v) => fmtDate(v).replace(/<[^>]+>/g, "");
+  if (!done.length) {
+    body.innerHTML = `<div class="guest-empty">No earlier calls have been logged on this RO yet.</div>`;
+    return;
+  }
+  body.innerHTML = "";
+  for (const it of done) {
+    const div = document.createElement("div");
+    div.className = "hist-item";
+    div.innerHTML =
+      `<div class="hist-head"><b>Attempt ${it.attempt}</b> · ${it.completedBy || ""} · ${dfmt(it.completedAt)}</div>` +
+      `<div class="hist-note">${escapeHtml(it.notes) || '<span style="color:var(--ink-3)">(no note)</span>'}</div>` +
+      (it.followUpDate ? `<span class="hist-fu">🔁 scheduled follow-up → ${dfmt(it.followUpDate)}</span>` : "");
+    body.appendChild(div);
   }
 }
 
@@ -421,6 +455,11 @@ function wireEvents() {
   document.querySelectorAll("#fuPop .when-btn").forEach((b) => b.onclick = () => completeNow(shift(TODAY, +b.dataset.days)));
   $("fuDateGo").onclick = () => { const d = $("fuDate").value; if (d) completeNow(d); };
 
+  // history modal
+  const histOv = $("historyOverlay");
+  $("history-close").onclick = () => histOv.classList.add("hidden");
+  histOv.addEventListener("click", (e) => { if (e.target === histOv) histOv.classList.add("hidden"); });
+
   // admin modal
   const overlay = $("adminOverlay");
   $("adminBtn").onclick = () => { renderAdmin(); loadSyncStatusText(); overlay.classList.remove("hidden"); };
@@ -462,5 +501,5 @@ function wireEvents() {
       : (matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
     document.documentElement.setAttribute("data-theme", next);
   };
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("adminOverlay").classList.add("hidden"); closeFu(); } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("adminOverlay").classList.add("hidden"); $("historyOverlay").classList.add("hidden"); closeFu(); } });
 }

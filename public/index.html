@@ -283,6 +283,21 @@
   }
   .done-badge .chk { color: var(--approved); font-weight: 700; }
 
+  /* call history modal */
+  .hist-btn {
+    font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; margin-bottom: 7px;
+    border: 1px solid var(--brand); background: var(--brand-wash); color: var(--brand-ink);
+    border-radius: 7px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .hist-btn:hover { background: var(--brand); color: #fff; }
+  .hist-item { border-left: 2px solid var(--line-strong); padding: 0 0 14px 16px; position: relative; }
+  .hist-item:last-child { padding-bottom: 2px; }
+  .hist-item::before { content: ""; position: absolute; left: -6px; top: 3px; width: 10px; height: 10px; border-radius: 999px; background: var(--brand); border: 2px solid var(--surface); }
+  .hist-head { font-size: 12px; color: var(--ink-3); }
+  .hist-head b { color: var(--ink); }
+  .hist-note { margin-top: 4px; font-size: 13.5px; white-space: pre-wrap; }
+  .hist-fu { display: inline-block; margin-top: 5px; font-size: 11.5px; color: var(--brand-ink); background: var(--brand-wash); border-radius: 999px; padding: 2px 9px; }
+
   /* follow-up badges on rows */
   .fu-tag {
     display: inline-block; margin-top: 3px; font-size: 10.5px; font-weight: 600;
@@ -519,6 +534,19 @@
   <div class="when-custom">
     <input type="date" id="fuDate">
     <button class="btn primary" id="fuDateGo">Set</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="historyOverlay">
+  <div class="modal" role="dialog" aria-label="Callback history">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="history-title">Call history</div>
+        <div class="modal-sub">Every call logged on this repair order</div>
+      </div>
+      <button class="icon-btn" id="history-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" id="history-body"></div>
   </div>
 </div>
 
