@@ -43,9 +43,9 @@ function rangeFor(key) {
 }
 function ageTag(v) {
   const n = daysOpen(v);
-  if (n >= 3) return `<span class="age over">${n}d open</span>`;
-  if (n === 2) return `<span class="age warn">${n}d open</span>`;
-  return `<span class="age">${n <= 0 ? "today" : n + "d open"}</span>`;
+  const label = n <= 0 ? "Posted today" : `Posted ${n} day${n === 1 ? "" : "s"} ago`;
+  const cls = n >= 3 ? "over" : n === 2 ? "warn" : "";
+  return `<span class="age ${cls}">${label}</span>`;
 }
 const effDate = (r) => (r.kind === "followup" ? r.dueDate : r.postedDate);
 const isOverdue = (r) => !r.completed && effDate(r) && daysOpen(effDate(r)) >= 3;
