@@ -11,6 +11,11 @@ import { runSync } from "./jobs/sync.js";
 const SHOP_ID = Number(process.env.TEKMETRIC_SHOP_ID);
 const centsToDollars = (c) => Math.round(Number(c || 0)) / 100;
 
+// "Today" in the shop's local timezone, so follow-ups due dates (set locally)
+// compare correctly instead of against UTC. Sanitized — it's our own config.
+const SHOP_TZ = (process.env.SHOP_TZ || "America/New_York").replace(/[^A-Za-z0-9_/+-]/g, "");
+const TODAY_SQL = `((now() AT TIME ZONE '${SHOP_TZ}')::date)`;
+
 // Shape one joined callback row for the frontend.
 function toCallback(r) {
   return {
@@ -80,9 +85,9 @@ export function apiRouter() {
     if (to) { cp.push(to); cActiveRange += ` AND ro.posted_date <= ($${cp.length}::date + 1)`; cDoneRange += ` AND ci.completed_at <= ($${cp.length}::date + 1)`; }
     const counts = await query(
       `SELECT
-         COUNT(*) FILTER (WHERE completed = false AND (kind = 'initial' OR due_date <= CURRENT_DATE)${cActiveRange})  AS active,
-         COUNT(*) FILTER (WHERE completed = false AND kind = 'followup' AND due_date > CURRENT_DATE${cActiveRange})   AS followups,
-         COUNT(*) FILTER (WHERE completed = true${cDoneRange})                                                       AS completed
+         COUNT(*) FILTER (WHERE completed = false AND (kind = 'initial' OR due_date <= ${TODAY_SQL})${cActiveRange})  AS active,
+         COUNT(*) FILTER (WHERE completed = false AND kind = 'followup' AND due_date > ${TODAY_SQL})                  AS followups,
+         COUNT(*) FILTER (WHERE completed = true${cDoneRange})                                                        AS completed
        FROM callback_items ci JOIN repair_orders ro ON ro.tek_id = ci.ro_tek_id
        WHERE true${cadv}`, cp);
 
@@ -123,10 +128,10 @@ export function apiRouter() {
     // Follow-ups tab = only those still scheduled ahead, soonest due first.
     let dateCol, orderDir = "DESC", applyRange = true;
     if (view === "active") {
-      where.push("ci.completed = false AND (ci.kind = 'initial' OR ci.due_date <= CURRENT_DATE)");
+      where.push(`ci.completed = false AND (ci.kind = 'initial' OR ci.due_date <= ${TODAY_SQL})`);
       dateCol = "COALESCE(ci.due_date, ro.posted_date)";
     } else if (view === "followups") {
-      where.push("ci.completed = false AND ci.kind = 'followup' AND ci.due_date > CURRENT_DATE");
+      where.push(`ci.completed = false AND ci.kind = 'followup' AND ci.due_date > ${TODAY_SQL}`);
       dateCol = "ci.due_date";
       orderDir = "ASC";      // next-to-come-due at the top
       applyRange = false;    // future items live outside the "up to today" range
