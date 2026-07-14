@@ -143,6 +143,7 @@ function renderTable(rows) {
     th.querySelector(".arrow").textContent = on ? (sortDir === "asc" ? "▲" : "▼") : "";
   });
   sortRows(rows);
+  $("th-last").textContent = view === "completed" ? "Completed" : "";
 
   const tb = $("rows");
   tb.innerHTML = "";
@@ -184,7 +185,9 @@ function renderTable(rows) {
     const notesCell = tr.children[6];
     if (r.completed) {
       notesCell.innerHTML = `<span style="color:var(--ink-2)">${escapeHtml(r.notes) || "—"}</span>`;
-      const done = `<span class="done-badge"><span class="chk">✓</span> ${r.completedBy || ""}</span>`;
+      const done =
+        `<div class="date" style="font-weight:600">${fmtDate(r.completedAt)}</div>` +
+        `<span class="done-badge"><span class="chk">✓</span> ${r.completedBy || ""}</span>`;
       const fu = r.followUpDate
         ? `<div style="margin-top:6px"><span class="fu-badge">🔁 Follow-up → ${fmtDate(r.followUpDate).replace(/<[^>]+>/g,"")}</span></div>`
         : "";
